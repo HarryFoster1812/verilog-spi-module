@@ -183,7 +183,7 @@ module User_Peripheral (
         .tx_read_data    (tc_buffer_rdata)
     );
 
-    // --- 2. Transfer Controller ---
+    // --- Transfer Controller ---
     wire       engine_start_byte;
     wire [7:0] engine_tx_byte;
     wire       engine_byte_done;
