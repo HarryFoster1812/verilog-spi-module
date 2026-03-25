@@ -1,3 +1,4 @@
+// TODO: Change interface to use words not bytes
 module Buffer_RAM (
     input  wire        clk,
     
