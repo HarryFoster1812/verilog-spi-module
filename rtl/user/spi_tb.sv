@@ -76,11 +76,13 @@ initial
 begin
 reset_peripheral();
 
-peripheral_write_32bit(32'h0002_0004, 32'hABCD_1234); 
-peripheral_read_32bit (32'h0002_0000);
-peripheral_read_32bit (32'h0002_0004);
-peripheral_read_32bit (32'h0002_0008);
-peripheral_read_32bit (32'h0002_000C);
+// ram buffer test
+peripheral_write_32bit(32'h0002_0200, 32'hABCD_1234);  // write to ram Buffer
+peripheral_read_32bit (32'h0002_0200); // expected ABCD_1234
+peripheral_read_32bit (32'h0002_0204); // expected 0
+peripheral_write_32bit(32'h0002_02FF, 32'hFFFF_FFFF);  // write to ram Buffer (misaligned) expected buffer to align to address 0x2FC
+peripheral_read_32bit (32'h0002_02FC);
+peripheral_read_32bit (32'h0002_0300); // expected 0x0
 
 @ (posedge clk);                                        /* An idle moment ... */
 

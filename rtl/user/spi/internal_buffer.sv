@@ -1,5 +1,6 @@
 module Buffer_RAM (
     input  logic        clk,
+		input logic reset,
     
     // CPU interface
     input  logic [31:0] cpu_addr,
@@ -51,8 +52,13 @@ module Buffer_RAM (
     assign tx_read_data = buffer[tx_addr];
 
     // Synchronous Writes
-    always_ff @(posedge clk) begin
-        if (cpu_write_en) begin
+    always_ff @(posedge clk or posedge reset) begin
+			if (reset) begin
+				// Wipe entire memory to 0 on Active-High Reset
+				for (int i = 0; i < 512; i++) begin
+					buffer[i] <= 8'h00;
+				end
+			end else begin if (cpu_write_en) begin
             // Aligning to 4-byte boundary for the word write
             buffer[{ram_index[8:2], 2'b00}] <= cpu_write_data[7:0];
             buffer[{ram_index[8:2], 2'b01}] <= cpu_write_data[15:8];
@@ -65,5 +71,6 @@ module Buffer_RAM (
             buffer[tx_addr] <= tx_write_data;
         end
     end
+	end
 
 endmodule
