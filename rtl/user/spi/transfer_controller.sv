@@ -9,7 +9,7 @@ module Transfer_Controller (
     input  logic [8:0] block_len,
 
 		input  logic [7:0]  cpu_tx_byte,
-		output logic [7:0]  cpu_rx_byte    
+		output logic [7:0]  cpu_rx_byte,
     // SPI engine interface
     output logic [7:0]  tx_byte,
     input  logic [7:0]  rx_byte,
@@ -36,7 +36,7 @@ enum {
 	WAIT_BYTE,
 	BYTE_DONE,
 	TRANSFER_DONE,
-	ERROR,
+	ERROR
 } state;
 
 logic internal_block_mode;
@@ -45,7 +45,7 @@ logic [8:0] block_terminator;
 logic [7:0]  cpu_tx_passthrough;
 
 always_ff @(posedge clk or posedge reset) begin
-	if (reset or stop) begin
+	if (reset || stop) begin
 		// reset all states 
 		state               <= IDLE;
 		internal_block_mode <= 0;
@@ -58,7 +58,6 @@ always_ff @(posedge clk or posedge reset) begin
 		start_byte          <= 0;
 		cpu_rx_byte         <= 8'h00;
 	end else
-
 		case(state)
 			IDLE:
 				begin

@@ -1,33 +1,33 @@
 module SPI_Engine (
-  input  wire       clk,
-  input  wire       reset,
+  input  logic       clk,
+  input  logic       reset,
 
 	// Byte interface
-  input  wire [7:0] tx_byte,
-  input  wire       start_byte,
-  output wire [7:0] rx_byte,
-  output wire       byte_done,
+  input  logic [7:0] tx_byte,
+  input  logic       start_byte,
+  output logic [7:0] rx_byte,
+  output logic       byte_done,
 
 		// Configuration
-  input  wire       cpol,
-  input  wire       cpha,
-  input  wire [7:0] clk_divider,
-  input  wire       cs,
+  input  logic       cpol,
+  input  logic       cpha,
+  input  logic [7:0] clk_divider,
+  input  logic       cs,
 
 			// SPI pins
-  output wire       mosi,
-  input  wire       miso,
-  output wire       sclk,
-  output wire       cs_out
+  output logic       mosi,
+  input  logic       miso,
+  output logic       sclk,
+  output logic       cs_out
 );
 				// Internal shift registers, clock divider, bit counter
 
-  reg [3:0] bit_count;   // 0-7 bits, plus one extra for state management
-  reg [7:0] tx_shifter;  // Shift register for MOSI
-  reg [7:0] rx_shifter;  // Shift register for MISO
-  reg       working;     // High when a transfer is in progress
-  reg       sclk_reg;    // Internal SCLK register
-  reg       half_cycle;  // Toggles every pulse_en to track half-clock cycles
+  logic [3:0] bit_count;   // 0-7 bits, plus one extra for state management
+  logic [7:0] tx_shifter;  // Shift register for MOSI
+  logic [7:0] rx_shifter;  // Shift register for MISO
+  logic       working;     // High when a transfer is in progress
+  logic       sclk_reg;    // Internal SCLK register
+  logic       half_cycle;  // Toggles every pulse_en to track half-clock cycles
 
   assign sclk = sclk_reg;
   assign rx_byte = rx_shifter;
@@ -44,19 +44,19 @@ module SPI_Engine (
     .is_ready(is_ready)     // High when the divider is stable
   );
 
-  always @(posedge clk) begin
+  always_ff @(posedge clk) begin
     if (reset) begin
       working    <= 1'b0;
       bit_count  <= 4'd0;
       sclk_reg   <= cpol;
       half_cycle <= 1'b0;
-      byte_done  <= 1'b0;
+      byte_done  <= 0;
     end else if (start_byte && !working) begin
       working    <= 1'b1;
       tx_shifter <= tx_byte;
       bit_count  <= 4'd0;
       half_cycle <= 1'b0;
-      byte_done  <= 1'b0;
+      byte_done  <= 1;
 						// Handle CPHA=0:
     end else if (working && pulse_en) begin
       half_cycle <= !half_cycle;
@@ -75,7 +75,7 @@ module SPI_Engine (
 							// SHIFT PHASE
         if (bit_count == 4'd7) begin
           working   <= 1'b0;
-          byte_done <= 1'b1;
+          byte_done <= 1;
           sclk_reg  <= cpol; // Return to Idle
         end else begin
           tx_shifter <= {tx_shifter[6:0], 1'b0};
@@ -83,7 +83,7 @@ module SPI_Engine (
         end
       end
     end else begin
-      byte_done <= 1'b0; // Pulse byte_done for only one cycle
+      byte_done <= 0; // Pulse byte_done for only one cycle
     end
   end
 

@@ -82,7 +82,6 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
             reg_irq_enable <= 32'h0000_0000;
             tx_byte_reg    <= 8'h00;
             rx_valid_flag  <= 1'b0;
-						stop_pulse		 <= 1'b1;					// send a stop signal to spi engine
         end else begin
             // Clear rx_valid_flag on CPU read of RXDATA
             if (is_reg_access && read_i && (address_i[9:0] == ADDR_RXDATA)) begin
