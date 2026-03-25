@@ -108,9 +108,7 @@ module User_Peripheral (
         end
     end
 
-    // =========================================================================
     // CPU Read Logic
-    // =========================================================================
     wire [7:0] ram_read_data; // From Buffer_RAM CPU port
 
     always @(*) begin
@@ -132,9 +130,7 @@ module User_Peripheral (
         end
     end
 
-    // =========================================================================
     // I/O Pin Mapping
-    // =========================================================================
     // port_out[0]=sclk, port_out[1]=MOSI, port_in[2]=MISO, port_out[3]=CS
     wire mosi_wire, sclk_wire, cs_wire, miso_wire;
     
@@ -183,7 +179,7 @@ module User_Peripheral (
         .tx_read_data    (tc_buffer_rdata)
     );
 
-    // --- 2. Transfer Controller ---
+    // Transfer Controller
     wire       engine_start_byte;
     wire [7:0] engine_tx_byte;
     wire       engine_byte_done;

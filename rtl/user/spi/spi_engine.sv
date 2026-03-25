@@ -36,7 +36,7 @@ module SPI_Engine (
 
 				logic pulse_en, is_ready;
 
-				Clock_Divisor clk_div(
+				Clock_Divider clk_div(
 					.clk_in(clk),      // 40 MHz system clock
 					.reset(reset),
 					.clk_divisor(clk_divider), 
