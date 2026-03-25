@@ -118,6 +118,14 @@ User_Peripheral  DUT (.clk            (clk),                  /* System clock */
                       .irq_o          (irq));           /* Interrupt requests */
 
 
+// port_out[0]=sclk, port_out[1]=MOSI, port_in[2]=MISO, port_out[3]=CS
+SPI_Slave_Dummy slave (
+    .sclk(port_out[0]),
+    .mosi(port_out[1]),
+    .miso(port_in[2]),
+    .cs_n(port_out[3]) 
+);
+
 /*----------------------------------------------------------------------------*/
 
 /*  Performs a 32 bit write to the peripheral.  Would require modification    */
