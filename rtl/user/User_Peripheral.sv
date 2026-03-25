@@ -196,7 +196,10 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
         .start           (start_pulse),
         .stop            (stop_pulse),
         .block_mode      (block_mode),
-        .block_len       (reg_block_len[15:0]),
+        .block_len       (reg_block_len[8:0]),
+
+				.cpu_tx_byte		 (tx_byte_reg),
+				.cpu_rx_byte		 (tc_rx_byte),
         
         // SPI Engine Interface
         .tx_byte         (engine_tx_byte),    // Output to Engine
@@ -222,7 +225,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
         .reset           (reset),
         
         // Byte Interface
-        .tx_byte         (block_mode ? engine_tx_byte : tx_byte_reg),
+        .tx_byte         (engine_tx_byte),
         .start_byte      (engine_start_byte),
         .rx_byte         (engine_rx_byte),
         .byte_done       (engine_byte_done),
