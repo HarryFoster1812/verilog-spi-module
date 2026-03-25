@@ -1,36 +1,35 @@
 module User_Peripheral (
-    // Processor Bus Interface
-    input  wire        clk,
-    input  wire        reset,
-    input  wire        cs_i,
-    input  wire        read_i,
-    input  wire        write_i,
-    input  wire [1:0]  size_i,
-    input  wire [1:0]  mode_i,
-    input  wire [31:0] address_i,
-    output reg         stall_o,
-    output reg  [2:0]  abort_o,
-    input  wire [31:0] data_in,
-    output reg  [31:0] data_out,
+// Processor Bus Interface
+input  wire        clk,           /* System clock     */
+input  wire        reset,         /* System reset     */
+input  wire        cs_i,          /* Device select    */
+input  wire        read_i,        /* Bus read select  */
+input  wire  [1:0] size_i,        /* Transfer size    */
+input  wire        write_i,       /* Bus write select */
+input  wire  [1:0] mode_i,        /* Privilege mode   */
+input  wire [31:0] address_i,     /* Processor address*/
+output wire        stall_o,       /* Bus wait output  */
+output wire  [2:0] abort_o,       /* Bus error        */
+input  wire [31:0] data_in,       /* Store data bus   */
+output reg  [31:0] data_out,      /* Load data bus    */
+input  wire [31:0] port_in,       /*Connections towards */
 
-    // I/O Interface
-    input  wire [31:0] port_in,
-    output wire [31:0] port_out,
-    output wire [31:0] port_direction,
-    output wire [7:0]  LED_o,
-    input  wire [3:0]  switch_i,
-    
-    // LCD Interface (Unused in this peripheral)
-    output wire [7:0]  LCD_data_o,
-    input  wire [7:0]  LCD_data_i,
-    output wire        LCD_RW_o,
-    output wire        LCD_RS_o,
-    output wire        LCD_E_o,
-    output wire        LCD_BL_o,
-    
-    // Interrupts
-    output wire [3:0]  irq_o
-);
+// I/O Interface
+output wire [31:0] port_out, 
+output wire [31:0] port_direction,/* 1nput or 0utput  */
+output wire  [7:0] LED_o,         /* Connections towards */
+
+// LCD Interface (Unused in this peripheral)
+output wire  [7:0] LCD_data_o,    /* Outputs to LCD   */
+input  wire  [7:0] LCD_data_i,    /* Inputs from LCD  */
+output wire        LCD_RW_o,      /* Read Not write   */
+output wire        LCD_RS_o,      /* LCD Reg select   */
+output wire        LCD_E_o,       /* LCD Enable       */
+output wire        LCD_BL_o,      /* LCD Backlight,   */
+																	/* Active high      */
+
+input  wire  [3:0] switch_i,      /* PCB switch states*/
+output wire  [3:0] irq_o);        /*Interrupt requests*/
 
     // Address Decoding
     // address_i[9:0]
@@ -109,12 +108,12 @@ module User_Peripheral (
     end
 
     // CPU Read Logic
-    wire [7:0] ram_read_data; // From Buffer_RAM CPU port
+    wire [31:0] ram_read_data; // From Buffer_RAM CPU port
 
     always @(*) begin
         data_out = 32'h0000_0000;
         if (is_ram_access && read_i) begin
-            data_out = {24'h000000, ram_read_data};
+            data_out = ram_read_data;
         end 
         else if (is_reg_access && read_i) begin
             case (address_i[9:0])
@@ -146,8 +145,9 @@ module User_Peripheral (
 		// MOSI(0), SCLK(1), CS(2) are Outputs.
     assign port_direction = 32'h0000_0004; // 0b0100
 
-    assign stall_o = 1'b0;
-    assign abort_o = 3'b000;
+		assign stall_o =    cs_i   && 1'b0;       /* Unlikely to want to change these */
+		assign abort_o = {3{cs_i}} && 3'h0;     /* Aborts done at 'MMU' level already */
+
     assign LED_o   = 8'h00;
     assign LCD_E_o = 1'b0;
     assign LCD_RW_o= 1'b0;
@@ -167,10 +167,11 @@ module User_Peripheral (
         .clk             (clk),
         
         // CPU Interface
-        .cpu_addr        (address_i[8:0]),
-        .cpu_write_data  (data_in[7:0]),
+        .cpu_addr        (address_i),
+        .cpu_write_data  (data_in),
         .cpu_write_en    (is_ram_access & write_i),
         .cpu_read_data   (ram_read_data),
+        .cpu_read_mode   (size_i),
         
         // Transfer Controller Interface
         .tx_addr         (tc_buffer_addr),
@@ -179,11 +180,7 @@ module User_Peripheral (
         .tx_read_data    (tc_buffer_rdata)
     );
 
-<<<<<<< HEAD
     // Transfer Controller
-=======
-    // --- Transfer Controller ---
->>>>>>> refs/remotes/origin/master
     wire       engine_start_byte;
     wire [7:0] engine_tx_byte;
     wire       engine_byte_done;
