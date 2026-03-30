@@ -1,4 +1,6 @@
-module Transfer_Controller (
+module Transfer_Controller #(
+    parameter ADDR_BIT = 12 // 1 less than internal buffer since it is split in two regions Tx, Rx
+	)(
     input  logic        clk,
     input  logic        reset,
     
@@ -6,7 +8,7 @@ module Transfer_Controller (
     input  logic        start,
     input  logic        stop,
     input  logic        block_mode,
-    input  logic [8:0] block_len,
+    input  logic [ADDR_BIT-2:0] block_len,
 
 		input  logic [7:0]  cpu_tx_byte,
 		output logic [7:0]  cpu_rx_byte,
@@ -18,7 +20,7 @@ module Transfer_Controller (
     
     // Buffer interface
     input  logic [7:0]  buffer_read_data,
-    output logic [8:0]  buffer_addr,
+    output logic [ADDR_BIT-1:0]  buffer_addr,
     output logic [7:0]  buffer_write_data,
     output logic        buffer_write_en,
     
@@ -28,7 +30,6 @@ module Transfer_Controller (
     output logic         block_done,
     output logic         error
 );
-
 enum {
 	IDLE,
 	LOAD_BYTE,
@@ -40,8 +41,8 @@ enum {
 } state;
 
 logic internal_block_mode;
-logic [8:0] block_counter;
-logic [8:0] block_terminator;
+logic [ADDR_BIT-2:0] block_counter;
+logic [ADDR_BIT-2:0] block_terminator;
 logic [7:0]  cpu_tx_passthrough;
 
 always_ff @(posedge clk or posedge reset) begin
@@ -72,13 +73,13 @@ always_ff @(posedge clk or posedge reset) begin
 					if(start) begin 
 						state <= LOAD_BYTE; 
 						busy  <= 1;
-						block_counter <= 16'h0;
+						block_counter <= 0;
 						if(block_mode) begin 
 								block_terminator    <= block_len; 
 								internal_block_mode <= 1; 
 						end else begin 
 								internal_block_mode <= 0; 
-								block_terminator    <= 16'h1; 
+								block_terminator    <= 1; 
 								cpu_tx_passthrough  <= cpu_tx_byte; 
 						end
 				end
@@ -103,7 +104,7 @@ always_ff @(posedge clk or posedge reset) begin
 					if (byte_done) begin
 						state             <= BYTE_DONE;
 						if (internal_block_mode) begin
-							buffer_addr       <= block_counter;
+							buffer_addr       <= {1'b1, block_counter[ADDR_BIT-2:0]};
 							buffer_write_data <= rx_byte;
 							buffer_write_en   <= 1'b1;
 						end
@@ -114,7 +115,7 @@ always_ff @(posedge clk or posedge reset) begin
 			BYTE_DONE:
 				begin
 					buffer_write_en <= 1'b0;
-					if (block_counter == (block_terminator - 9'b1)) // NOTE: This does work but is very hacky since 512 becomes 0 but that means 0 will transfer 512 
+					if (block_counter == (block_terminator - ADDR_BIT'(1))) // NOTE: This does work but is very hacky since 512 becomes 0 but that means 0 will transfer 512 
 						state <= TRANSFER_DONE;
 					else begin
 						block_counter <= block_counter + 1;

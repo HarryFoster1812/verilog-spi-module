@@ -36,18 +36,22 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
     // 0x000 - 0x1FF: Memory Mapped Registers (address_i[9] == 0)
     // 0x200 - 0x3FF: 512-Byte Buffer RAM     (address_i[9] == 1)
     
-    wire is_ram_access = cs_i && address_i[9];
-    wire is_reg_access = cs_i && !address_i[9];
     
     // Register Address Offsets
-    localparam ADDR_CONTROL    = 10'h000;
-    localparam ADDR_STATUS     = 10'h004;
-    localparam ADDR_CONFIG     = 10'h008;
-    localparam ADDR_CS         = 10'h00C;
-    localparam ADDR_TXDATA     = 10'h010;
-    localparam ADDR_RXDATA     = 10'h014;
-    localparam ADDR_BLOCK_LEN  = 10'h018;
-    localparam ADDR_IRQ_ENABLE = 10'h01C;
+    localparam ADDR_CONTROL    = 16'h000;
+    localparam ADDR_STATUS     = 16'h004;
+    localparam ADDR_CONFIG     = 16'h008;
+    localparam ADDR_CS         = 16'h00C;
+    localparam ADDR_TXDATA     = 16'h010;
+    localparam ADDR_RXDATA     = 16'h014;
+    localparam ADDR_BLOCK_LEN  = 16'h018;
+    localparam ADDR_IRQ_ENABLE = 16'h01C;
+
+    localparam BUFFER_START = 16'h200;
+		localparam BUFFER_BUS_SIZE = 12;
+
+    wire is_ram_access = cs_i && (address_i[15:0] >= BUFFER_START);
+    wire is_reg_access = cs_i && !is_ram_access;
 
 		reg	 [31:0] reg_config = 32'h0000_0200;
     reg  [31:0] reg_cs;
@@ -68,9 +72,9 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
 
     // CPU Write Logic
     // START and STOP are pulses, not stored registers.
-    wire start_pulse = (is_reg_access && write_i && (address_i[9:0] == ADDR_CONTROL)) ? data_in[0] : 1'b0;
-    wire stop_pulse  = (is_reg_access && write_i && (address_i[9:0] == ADDR_CONTROL)) ? data_in[1] : 1'b0;
-    wire block_mode  = (is_reg_access && write_i && (address_i[9:0] == ADDR_CONTROL)) ? data_in[2] : 1'b0;
+    wire start_pulse = (is_reg_access && write_i && (address_i[15:0] == ADDR_CONTROL)) ? data_in[0] : 1'b0;
+    wire stop_pulse  = (is_reg_access && write_i && (address_i[15:0] == ADDR_CONTROL)) ? data_in[1] : 1'b0;
+    wire block_mode  = (is_reg_access && write_i && (address_i[15:0] == ADDR_CONTROL)) ? data_in[2] : 1'b0;
 
     reg [7:0] tx_byte_reg;
     
@@ -84,7 +88,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
             rx_valid_flag  <= 1'b0;
         end else begin
             // Clear rx_valid_flag on CPU read of RXDATA
-            if (is_reg_access && read_i && (address_i[9:0] == ADDR_RXDATA)) begin
+            if (is_reg_access && read_i && (address_i[15:0] == ADDR_RXDATA)) begin
                 rx_valid_flag <= 1'b0;
             end
             
@@ -95,7 +99,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
 
             // CPU Writes to Registers
             if (is_reg_access && write_i) begin
-                case (address_i[9:0])
+                case (address_i[15:0])
                     ADDR_CONFIG:     reg_config     <= data_in;
                     ADDR_CS:         reg_cs         <= data_in;
                     ADDR_TXDATA:     tx_byte_reg    <= data_in[7:0];
@@ -116,7 +120,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
             data_out = ram_read_data;
         end 
         else if (is_reg_access && read_i) begin
-            case (address_i[9:0])
+            case (address_i[15:0])
                 ADDR_STATUS:     data_out = {24'b0, irq_status_flags, tc_error, tc_block_done, rx_valid_flag, tx_ready_flag, tc_busy};
                 ADDR_CONFIG:     data_out = reg_config;
                 ADDR_CS:         data_out = reg_cs;
@@ -158,7 +162,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
     // Module Instantiations
 
     // Buffer RAM (512 Bytes)
-    wire [8:0] tc_buffer_addr;
+    wire [BUFFER_BUS_SIZE-1:0] tc_buffer_addr;
     wire [7:0] tc_buffer_wdata;
     wire       tc_buffer_we;
     wire [7:0] tc_buffer_rdata;
@@ -195,7 +199,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
         .start           (start_pulse),
         .stop            (stop_pulse),
         .block_mode      (block_mode),
-        .block_len       (reg_block_len[8:0]),
+        .block_len       (reg_block_len[BUFFER_BUS_SIZE-2:0]),
 
 				.cpu_tx_byte		 (tx_byte_reg),
 				.cpu_rx_byte		 (tc_rx_byte),
@@ -253,7 +257,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
         
         // Config & Control
         .irq_enable      (reg_irq_enable[3:0]),
-        .irq_clear       (is_reg_access && write_i && (address_i[9:0] == ADDR_STATUS)), // Write anything to STATUS to clear IRQs
+        .irq_clear       (is_reg_access && write_i && (address_i[15:0] == ADDR_STATUS)), // Write anything to STATUS to clear IRQs
         
         // Outputs
         .irq_o           (irq_o),           // Maps to irq_o[3:0]

@@ -1,4 +1,8 @@
-module Buffer_RAM (
+module Buffer_RAM #(
+    parameter ADDR_BIT = 12,
+    parameter DEPTH    = 4096,
+    parameter BUFFER_START_ADDR = 'h200
+)(
     input  logic        clk,
 		input logic reset,
     
@@ -10,18 +14,24 @@ module Buffer_RAM (
     input  logic [1:0]  cpu_read_mode,  // 00: Byte, 01: Half, 10: Word
     
     // SPI/Transfer_Controller interface
-    input  logic [8:0]  tx_addr,
+    input  logic [ADDR_BIT-1:0]  tx_addr,
     input  logic [7:0]  tx_write_data,
     input  logic        tx_write_en,
     output logic [7:0]  tx_read_data
 );
 
-    // Internal 512-byte buffer
-    logic [7:0] buffer [0:511];
 
-    // Local index derived from the lower 9 bits
-    logic [8:0] ram_index;
-    assign ram_index = cpu_addr[8:0];
+    // Internal DEPTH-byte buffer
+		logic [7:0] buffer [0:DEPTH-1];
+
+		initial begin
+				for (int i = 0; i < DEPTH; i++) begin
+						buffer[i] = 8'h00;
+				end
+		end
+    // Local index derived from the lower x bits
+    logic [ADDR_BIT-1:0] ram_index;
+    assign ram_index = cpu_addr[ADDR_BIT-1:0]-BUFFER_START_ADDR[ADDR_BIT-1:0];
 
     //  Combinatorial Read Logic
     always_comb begin
@@ -32,16 +42,16 @@ module Buffer_RAM (
             
             2'b01: begin // Halfword Access: Align to 2-byte boundary
                 // Mask bit 0 to force 16-bit alignment
-                cpu_read_data = {16'h0, buffer[{ram_index[8:1], 1'b1}], 
-                                        buffer[{ram_index[8:1], 1'b0}]};
+                cpu_read_data = {16'h0, buffer[{ram_index[ADDR_BIT-1:1], 1'b1}], 
+                                        buffer[{ram_index[ADDR_BIT-1:1], 1'b0}]};
             end
             
             2'b10: begin // Word Access: Align to 4-byte boundary
                 // Mask bits [1:0] to force 32-bit alignment
-                cpu_read_data = {buffer[{ram_index[8:2], 2'b11}], 
-                                 buffer[{ram_index[8:2], 2'b10}], 
-                                 buffer[{ram_index[8:2], 2'b01}], 
-                                 buffer[{ram_index[8:2], 2'b00}]};
+                cpu_read_data = {buffer[{ram_index[ADDR_BIT-1:2], 2'b11}], 
+                                 buffer[{ram_index[ADDR_BIT-1:2], 2'b10}], 
+                                 buffer[{ram_index[ADDR_BIT-1:2], 2'b01}], 
+                                 buffer[{ram_index[ADDR_BIT-1:2], 2'b00}]};
             end
             
             default: cpu_read_data = 32'h0;
@@ -52,25 +62,18 @@ module Buffer_RAM (
     assign tx_read_data = buffer[tx_addr];
 
     // Synchronous Writes
-    always_ff @(posedge clk or posedge reset) begin
-			if (reset) begin
-				// Wipe entire memory to 0 on Active-High Reset
-				for (int i = 0; i < 512; i++) begin
-					buffer[i] <= 8'h00;
-				end
-			end else begin if (cpu_write_en) begin
-            // Aligning to 4-byte boundary for the word write
-            buffer[{ram_index[8:2], 2'b00}] <= cpu_write_data[7:0];
-            buffer[{ram_index[8:2], 2'b01}] <= cpu_write_data[15:8];
-            buffer[{ram_index[8:2], 2'b10}] <= cpu_write_data[23:16];
-            buffer[{ram_index[8:2], 2'b11}] <= cpu_write_data[31:24];
-        end
-        
+    always @(posedge clk) begin
         // Priority to SPI write if both occur simultaneously
         if (tx_write_en) begin
             buffer[tx_addr] <= tx_write_data;
+        end else if (cpu_write_en) begin
+            // Aligning to 4-byte boundary for the word write
+            buffer[{ram_index[ADDR_BIT-1:2], 2'b00}] <= cpu_write_data[7:0];
+            buffer[{ram_index[ADDR_BIT-1:2], 2'b01}] <= cpu_write_data[15:8];
+            buffer[{ram_index[ADDR_BIT-1:2], 2'b10}] <= cpu_write_data[23:16];
+            buffer[{ram_index[ADDR_BIT-1:2], 2'b11}] <= cpu_write_data[31:24];
         end
-    end
-	end
+        
+		end
 
 endmodule
