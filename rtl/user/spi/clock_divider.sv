@@ -1,28 +1,29 @@
 module Clock_Divider (
-    input  wire       clk_in,      // 40 MHz system clock
-    input  wire       reset,
-    input  wire [7:0] clk_divisor, // From CONFIG register (e.g., 2 to 255)
-    output reg        pulse_en,    // High for 1 cycle every (2 * divisor) cycles
-    output wire       is_ready     // High when the divider is stable
+    input  logic       clk_in,
+    input  logic       reset,
+    input  logic [7:0] clk_divisor, // number of clk cycles per HALF SCLK period
+    output logic       tick         // 1-cycle pulse every divisor cycles
 );
 
-    // Internal counter
-    reg [7:0] counter;
+    logic [7:0] counter;
+    logic [7:0] divisor_reg;
 
-    // We are ready as soon as reset is released in this simple implementation
-    assign is_ready = !reset;
-
-    always @(posedge clk_in) begin
+    always_ff @(posedge clk_in) begin
         if (reset) begin
-            counter  <= 8'h00;
-            pulse_en <= 1'b0;
+            counter     <= 0;
+            divisor_reg <= 1;
+            tick        <= 0;
         end else begin
-            if (counter >= clk_divisor) begin
-                counter  <= 8'h00;
-                pulse_en <= 1'b1; // Trigger the pulse
+            // Latch divisor safely at boundary
+            if (counter == 0)
+                divisor_reg <= (clk_divisor == 0) ? 1 : clk_divisor;
+
+            if (counter == divisor_reg - 1) begin
+                counter <= 0;
+                tick    <= 1;
             end else begin
-                counter  <= counter + 1'b1;
-                pulse_en <= 1'b0;
+                counter <= counter + 1;
+                tick    <= 0;
             end
         end
     end
