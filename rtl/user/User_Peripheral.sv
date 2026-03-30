@@ -49,7 +49,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
     localparam ADDR_BLOCK_LEN  = 10'h018;
     localparam ADDR_IRQ_ENABLE = 10'h01C;
 
-    reg  [31:0] reg_config;
+		reg	 [31:0] reg_config = 32'h0000_0200;
     reg  [31:0] reg_cs;
     reg  [31:0] reg_block_len;
     reg  [31:0] reg_irq_enable;

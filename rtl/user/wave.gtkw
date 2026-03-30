@@ -1,0 +1,61 @@
+[*]
+[*] GTKWave Analyzer v3.3.126 (w)1999-2026 BSI
+[*] Mon Mar 30 15:42:08 2026
+[*]
+[dumpfile] "/home/harryfoster/git/comp22712-questa/rtl/user/wave.vcd"
+[dumpfile_mtime] "Mon Mar 30 15:35:16 2026"
+[dumpfile_size] 35217
+[savefile] "/home/harryfoster/git/comp22712-questa/rtl/user/wave.gtkw"
+[timestart] 0
+[size] 774 872
+[pos] -1 -1
+*0.000000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] User_Testbench.
+[treeopen] User_Testbench.DUT.
+[sst_width] 290
+[signals_width] 206
+[sst_expanded] 1
+[sst_vpaned_height] 251
+@23
+User_Testbench.clk
+User_Testbench.data_in[31:0]
+User_Testbench.data_out[31:0]
+User_Testbench.irq[3:0]
+User_Testbench.reset
+User_Testbench.address[31:0]
+User_Testbench.slave.sclk
+User_Testbench.slave.miso
+User_Testbench.slave.mosi
+User_Testbench.slave.cs_n
+User_Testbench.DUT.reg_config[31:0]
+User_Testbench.DUT.reg_block_len[31:0]
+User_Testbench.DUT.reg_irq_enable[31:0]
+User_Testbench.DUT.rx_valid_flag
+User_Testbench.DUT.tx_byte_reg[7:0]
+#{User_Testbench.DUT.tc_rx_byte[7:0]} User_Testbench.DUT.tc_rx_byte[7] User_Testbench.DUT.tc_rx_byte[6] User_Testbench.DUT.tc_rx_byte[5] User_Testbench.DUT.tc_rx_byte[4] User_Testbench.DUT.tc_rx_byte[3] User_Testbench.DUT.tc_rx_byte[2] User_Testbench.DUT.tc_rx_byte[1] User_Testbench.DUT.tc_rx_byte[0]
+User_Testbench.DUT.engine_inst.bit_count[3:0]
+User_Testbench.DUT.engine_inst.byte_done
+#{User_Testbench.DUT.engine_inst.clk_divider[7:0]} User_Testbench.DUT.engine_inst.clk_divider[7] User_Testbench.DUT.engine_inst.clk_divider[6] User_Testbench.DUT.engine_inst.clk_divider[5] User_Testbench.DUT.engine_inst.clk_divider[4] User_Testbench.DUT.engine_inst.clk_divider[3] User_Testbench.DUT.engine_inst.clk_divider[2] User_Testbench.DUT.engine_inst.clk_divider[1] User_Testbench.DUT.engine_inst.clk_divider[0]
+User_Testbench.DUT.engine_inst.cpha
+User_Testbench.DUT.engine_inst.cpol
+User_Testbench.DUT.engine_inst.pulse_en
+User_Testbench.DUT.engine_inst.rx_byte[7:0]
+User_Testbench.DUT.engine_inst.rx_shifter[7:0]
+User_Testbench.DUT.engine_inst.start_byte
+#{User_Testbench.DUT.engine_inst.tx_byte[7:0]} User_Testbench.DUT.engine_inst.tx_byte[7] User_Testbench.DUT.engine_inst.tx_byte[6] User_Testbench.DUT.engine_inst.tx_byte[5] User_Testbench.DUT.engine_inst.tx_byte[4] User_Testbench.DUT.engine_inst.tx_byte[3] User_Testbench.DUT.engine_inst.tx_byte[2] User_Testbench.DUT.engine_inst.tx_byte[1] User_Testbench.DUT.engine_inst.tx_byte[0]
+User_Testbench.DUT.engine_inst.tx_shifter[7:0]
+User_Testbench.DUT.engine_inst.working
+User_Testbench.DUT.tc_inst.block_counter[8:0]
+User_Testbench.DUT.tc_inst.block_done
+#{User_Testbench.DUT.tc_inst.block_len[8:0]} User_Testbench.DUT.tc_inst.block_len[8] User_Testbench.DUT.tc_inst.block_len[7] User_Testbench.DUT.tc_inst.block_len[6] User_Testbench.DUT.tc_inst.block_len[5] User_Testbench.DUT.tc_inst.block_len[4] User_Testbench.DUT.tc_inst.block_len[3] User_Testbench.DUT.tc_inst.block_len[2] User_Testbench.DUT.tc_inst.block_len[1] User_Testbench.DUT.tc_inst.block_len[0]
+User_Testbench.DUT.tc_inst.block_mode
+User_Testbench.DUT.tc_inst.block_terminator[8:0]
+User_Testbench.DUT.tc_inst.buffer_addr[8:0]
+#{User_Testbench.DUT.tc_inst.buffer_read_data[7:0]} User_Testbench.DUT.tc_inst.buffer_read_data[7] User_Testbench.DUT.tc_inst.buffer_read_data[6] User_Testbench.DUT.tc_inst.buffer_read_data[5] User_Testbench.DUT.tc_inst.buffer_read_data[4] User_Testbench.DUT.tc_inst.buffer_read_data[3] User_Testbench.DUT.tc_inst.buffer_read_data[2] User_Testbench.DUT.tc_inst.buffer_read_data[1] User_Testbench.DUT.tc_inst.buffer_read_data[0]
+User_Testbench.DUT.tc_inst.buffer_write_data[7:0]
+User_Testbench.DUT.tc_inst.buffer_write_en
+User_Testbench.DUT.tc_inst.busy
+User_Testbench.DUT.tc_inst.state
+User_Testbench.DUT.tc_inst.transfer_done
+[pattern_trace] 1
+[pattern_trace] 0

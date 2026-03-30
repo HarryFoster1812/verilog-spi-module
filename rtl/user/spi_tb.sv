@@ -5,7 +5,7 @@
 
 `define USER_IO_SPACE 16'h0002            /* 'Page' where this unit is mapped */
 
-`define RUN_TIME      40                  /* Number of cycles to simulate     */
+`define RUN_TIME      200                  /* Number of cycles to simulate     */
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -13,32 +13,33 @@ module User_Testbench();
 
 localparam  CLOCK_PERIOD = 10;
 
-reg         clk;                               /* System clock (40 MHz)       */
-reg         reset;                             /* System reset                */
-reg         read;                              /* Read cycle enable           */
-reg         write;                             /* Write cycle enable          */
-wire        cs;                                /* Unit select                 */
-reg  [31:0] address;                           /* Processor address           */
-reg   [1:0] size;                              /* Transfer size               */
-reg   [1:0] mode;                              /* Privilege mode              */
-reg  [31:0] data_in;                           /* Data write bus              */
-wire [31:0] data_out;                          /* Data read bus               */
-wire        stall;                             /* Wait states (unused here)   */
-wire  [2:0] abort;                             /* Bus error   (unused here)   */
-wire  [3:0] irq;                               /* Interrupt requests          */
+logic        clk;                               /* System clock (40 MHz)       */
+logic        reset;                             /* System reset                */
+logic        read;                              /* Read cycle enable           */
+logic        write;                             /* Write cycle enable          */
+logic        cs;                                /* Unit select                 */
+logic [31:0] address;                           /* Processor address           */
+logic  [1:0] size;                              /* Transfer size               */
+logic  [1:0] mode;                              /* Privilege mode              */
+logic [31:0] data_in;                           /* Data write bus              */
+logic [31:0] data_out;                          /* Data read bus               */
+logic        stall;                             /* Wait states (unused here)   */
+logic  [2:0] abort;                             /* Bus error   (unused here)   */
+logic  [3:0] irq;                               /* Interrupt requests          */
 
-reg  [31:0] port_in;                           /* Data from 'pins'            */
-wire [31:0] port_out;                          /* Data to 'pins'              */
-wire [31:0] port_direction;                    /* 'Pin' direction: 0 = 0utput */
-wire  [1:0] sounder;                           /* For viewing convenience     */
-wire  [7:0] LED;                               /* Potential LED output        */
-reg   [3:0] switch;                            /* Switch input state          */
+logic [31:0] port_in;                           /* Data from 'pins'            */
+logic [31:0] port_out;                          /* Data to 'pins'              */
+logic [31:0] port_direction;                    /* 'Pin' direction: 0 = 0utput */
+logic  [1:0] sounder;                           /* For viewing convenience     */
+logic  [7:0] LED;                               /* Potential LED output        */
+logic  [3:0] switch;                            /* Switch input state          */
 
-reg         proc_read;                         /* Read data expected back     */
-wire [31:0] proc_data;                   /* Read data - display purposes only */
+logic        proc_read;                         /* Read data expected back     */
+logic [31:0] proc_data;                   /* Read data - display purposes only */
 
 assign sounder = port_out[7:6];
-
+assign port_in[1:0] = 2'b00;
+assign port_in[31:3] = 29'b0;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
 initial clk = 1'b1;                                   /* Setup a clock signal */
@@ -47,7 +48,7 @@ always  #(CLOCK_PERIOD/2) clk <= !clk;
 initial                                               /* Limit run time       */
 begin
 repeat (`RUN_TIME) @ (posedge clk);
-$stop;
+$finish;
 end
 
 initial
@@ -59,8 +60,7 @@ size      = 2'h2;                              /* All word sized transfers    */
 mode      = 2'b11;                             /* In 'Machine' mode           */
    
 address   = 32'h_xxxx_xxxx;                    /* Some (data) signals don't   */
-data_in   = 32'h_xxxx_xxxx;                    /*  matter, until used         */
-port_in   = 32'h_xxxx_xxxx;
+data_in   = 32'h0;                    /*  matter, until used         */
 switch    = 4'h0;                              /* Tie off switch inputs       */
 
 end
@@ -86,12 +86,15 @@ peripheral_read_32bit (32'h0002_0300); // expected 0x0
 
 @ (posedge clk);                                        /* An idle moment ... */
 
-peripheral_write_32bit(32'h0002_0000, 32'h0000_0001); 
-peripheral_write_32bit(32'h0002_0004, 32'h0000_0002); 
-peripheral_read_32bit (32'h0002_0000);
-peripheral_read_32bit (32'h0002_0004);
+peripheral_write_32bit(32'h0002_0008, 32'h0000_0200);  // write config status (clk div = 2)
+peripheral_write_32bit(32'h0002_001C, 32'h0000_000F);  // enable interrupts
+peripheral_write_32bit(32'h0002_0010, 32'd42);  // write tranfer data to be 42
+peripheral_write_32bit(32'h0002_000C, 32'd0);  // pull cs low
+peripheral_write_32bit(32'h0002_0000, 32'h0000_0001);  // start spi engine (single transfer mode)
+peripheral_read_32bit(32'h0002_0004); // read status register
 
-repeat (2) @ (posedge clk);                    /* 'Chill out' before stopping */
+repeat (20) @ (posedge clk);                    /* Give more than enough time for spi transfer to finish */
+peripheral_read_32bit(32'h0002_0014); // read tx
 end
 
 assign cs = address[31:16] === `USER_IO_SPACE;     /* Decode peripheral space */

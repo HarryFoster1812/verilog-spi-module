@@ -11,7 +11,10 @@ module SPI_Slave_Dummy (
 
     // data that will be sent back
 		// the answer to the Ultimate Question of Life, the Universe and Everything
-		initial data_to_send = 8'd42;
+		initial begin 
+			data_to_send = 8'd42;
+			shift_reg = 8'd42;
+		end
 
     // SPI is Shift-Left: MSB first
     assign miso = shift_reg[7];

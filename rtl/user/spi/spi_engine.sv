@@ -52,11 +52,12 @@ module SPI_Engine (
       half_cycle <= 1'b0;
       byte_done  <= 0;
     end else if (start_byte && !working) begin
+			// Start engine 
       working    <= 1'b1;
       tx_shifter <= tx_byte;
       bit_count  <= 4'd0;
       half_cycle <= 1'b0;
-      byte_done  <= 1;
+      byte_done  <= 0;
 						// Handle CPHA=0:
     end else if (working && pulse_en) begin
       half_cycle <= !half_cycle;
