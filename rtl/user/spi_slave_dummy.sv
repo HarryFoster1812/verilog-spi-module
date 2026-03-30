@@ -14,6 +14,7 @@ module SPI_Slave_Dummy (
 		initial begin 
 			data_to_send = 8'd42;
 			shift_reg = 8'd42;
+			bit_count = 3'h7;
 		end
 
     // SPI is Shift-Left: MSB first
@@ -34,6 +35,7 @@ module SPI_Slave_Dummy (
                 // "Twist": send back the inversion of what we just got.
                 // This proves the full-duplex path is working.
                 data_to_send <= ~{shift_reg[6:0], mosi};
+								shift_reg <= ~{shift_reg[6:0], mosi};
             end else begin
                 bit_count <= bit_count - 1;
             end

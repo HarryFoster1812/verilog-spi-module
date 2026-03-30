@@ -5,7 +5,7 @@
 
 `define USER_IO_SPACE 16'h0002            /* 'Page' where this unit is mapped */
 
-`define RUN_TIME      200                  /* Number of cycles to simulate     */
+`define RUN_TIME      10000000                  /* Number of cycles to simulate     */
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -86,6 +86,7 @@ peripheral_read_32bit (32'h0002_0300); // expected 0x0
 
 @ (posedge clk);                                        /* An idle moment ... */
 
+/* Test single transfer */
 peripheral_write_32bit(32'h0002_0008, 32'h0000_0200);  // write config status (clk div = 2)
 peripheral_write_32bit(32'h0002_001C, 32'h0000_000F);  // enable interrupts
 peripheral_write_32bit(32'h0002_0010, 32'd42);  // write tranfer data to be 42
@@ -93,8 +94,48 @@ peripheral_write_32bit(32'h0002_000C, 32'd0);  // pull cs low
 peripheral_write_32bit(32'h0002_0000, 32'h0000_0001);  // start spi engine (single transfer mode)
 peripheral_read_32bit(32'h0002_0004); // read status register
 
-repeat (20) @ (posedge clk);                    /* Give more than enough time for spi transfer to finish */
+fork
+        begin
+            wait(irq != 4'b0000);
+            $display("%t [TB] Interrupt received.", $time);
+        end
+        begin
+            repeat (1000) @(posedge clk);
+            $display("%t [TB] ERROR: Timeout waiting for interrupt!", $time);
+            $finish;
+        end
+    join_any
+    disable fork; // Stop the "timer" if the interrupt won
+
 peripheral_read_32bit(32'h0002_0014); // read tx
+peripheral_write_32bit(32'h0002_0004, 32'h0); // write status to disable interrupt
+
+/* Test Block Mode */
+for (int i = 0; i < 512; i += 4) begin
+	peripheral_write_32bit(32'h0002_0200 + i, { 8'(i+3), 8'(i+2), 8'(i+1), 8'(i) });
+end
+peripheral_write_32bit(32'h0002_0008, 32'h0000_0200);  // write config status (clk div = 2)
+peripheral_write_32bit(32'h0002_0018, 32'h0000_0200);  // write block len = 512 bytes
+peripheral_write_32bit(32'h0002_000C, 32'd0);  // pull cs low
+peripheral_write_32bit(32'h0002_0000, 32'h0000_0005);  // start spi engine (block mode)
+
+fork
+        begin
+            wait(irq != 4'b0000);
+            $display("%t [TB] Interrupt received.", $time);
+        end
+        begin
+            repeat (10000000) @(posedge clk);
+            $display("%t [TB] ERROR: Timeout waiting for interrupt!", $time);
+            $finish;
+        end
+    join_any
+    disable fork; // Stop the "timer" if the interrupt won
+
+peripheral_write_32bit(32'h0002_0004, 32'h0); // write status to disable interrupt
+for (int i = 0; i < 512; i += 4) begin
+    peripheral_read_32bit(32'h0002_0200 + i); 
+end
 end
 
 assign cs = address[31:16] === `USER_IO_SPACE;     /* Decode peripheral space */

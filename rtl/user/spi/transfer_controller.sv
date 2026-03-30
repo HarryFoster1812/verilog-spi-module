@@ -114,7 +114,7 @@ always_ff @(posedge clk or posedge reset) begin
 			BYTE_DONE:
 				begin
 					buffer_write_en <= 1'b0;
-					if (block_counter == (block_terminator - 1))
+					if (block_counter == (block_terminator - 9'b1)) // NOTE: This does work but is very hacky since 512 becomes 0 but that means 0 will transfer 512 
 						state <= TRANSFER_DONE;
 					else begin
 						block_counter <= block_counter + 1;
