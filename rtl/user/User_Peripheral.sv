@@ -234,8 +234,8 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
         .byte_done       (engine_byte_done),
         
         // Configuration
-        .cpol            (reg_config[0]),
-        .cpha            (reg_config[1]),
+        .cpol            (reg_config[1]),
+        .cpha            (reg_config[0]),
         .clk_divider     (reg_config[15:8]),
         .cs              (reg_cs[0]),
         

@@ -11,7 +11,7 @@
 
 module User_Testbench();
 
-localparam  CLOCK_PERIOD = 10;
+localparam  CLOCK_PERIOD = 25;
 
 logic        clk;                               /* System clock (40 MHz)       */
 logic        reset;                             /* System reset                */
