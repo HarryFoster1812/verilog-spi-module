@@ -1,5 +1,5 @@
----
 # SPI User Peripheral Documentation
+
 
 | Address Range | Description | Access Type |
 | :--- | :--- | :--- |
@@ -90,6 +90,7 @@ The peripheral generates an interrupt on `irq_o` if any enabled flag in `STATUS`
 ![SPI Peripheral Schematic](./schematic.png)
 
 ## Flow Charts:
+```mermaid
 graph LR
     subgraph "Processor Bus Interface"
         Bus[CPU Bus]
