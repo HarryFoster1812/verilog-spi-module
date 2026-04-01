@@ -41,10 +41,11 @@
 
 | Bits | Name | Description |
 | :--- | :--- | :--- |
-| 7:4 | **IRQ_FLAGS** | Latched interrupt status from the Interrupt Controller. |
-| 3 | **TC_ERROR** | Indicates a transfer error occurred. |
-| 2 | **BLOCK_DONE**| High when a Block Mode transfer has finished. |
-| 1 | **RX_VALID** | High when new data is in `RXDATA`. Cleared by reading `RXDATA`. |
+| 7:5 | **IRQ_FLAGS** | Latched interrupt status from the Interrupt Controller. |
+| 4 | **TC_ERROR** | Indicates a transfer error occurred. |
+| 3 | **BLOCK_DONE**| High when a Block Mode transfer has finished. |
+| 2 | **RX_VALID** | High when new data is in `RXDATA`. Cleared by reading `RXDATA`. |
+| 1 | **TX_READY** | High when new data is in `RXDATA`. Cleared by reading `RXDATA`. |
 | 0 | **TC_BUSY** | High when the SPI engine or Transfer Controller is active. |
 
 Note: BLOCK_DONE is only high for one-cycle so it is very easy to miss it and I don't really know why I added it same with the error, instead enable interrupts and rely on the IRQ flags when polling
