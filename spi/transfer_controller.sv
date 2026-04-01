@@ -1,5 +1,5 @@
 module Transfer_Controller #(
-    parameter ADDR_BIT = 12 // 1 less than internal buffer since it is split in two regions Tx, Rx
+    parameter ADDR_BIT = 12
 	)(
     input  logic        clk,
     input  logic        reset,
@@ -33,6 +33,7 @@ module Transfer_Controller #(
 enum {
 	IDLE,
 	LOAD_BYTE,
+	FETCH_BYTE,
 	START_BYTE,
 	WAIT_BYTE,
 	BYTE_DONE,
@@ -41,9 +42,10 @@ enum {
 } state;
 
 logic internal_block_mode;
-logic [ADDR_BIT-2:0] block_counter;
-logic [ADDR_BIT-2:0] block_terminator;
+logic [ADDR_BIT-2:0] block_counter = 0;
+logic [ADDR_BIT-2:0] block_terminator = 0;
 logic [7:0]  cpu_tx_passthrough;
+assign last_cycle = (block_counter == block_terminator - 1'b1);// NOTE: This does work but is very hacky since 512 becomes 0 but that means 0 will transfer 512 
 
 always_ff @(posedge clk or posedge reset) begin
 	if (reset || stop) begin
@@ -52,6 +54,7 @@ always_ff @(posedge clk or posedge reset) begin
 		internal_block_mode <= 0;
 		transfer_done       <= 0;
 		block_done          <= 0;
+		block_terminator    <= 0;
 		error               <= 0;
 		buffer_write_en     <= 0;
 		buffer_addr         <= 0;
@@ -87,8 +90,14 @@ always_ff @(posedge clk or posedge reset) begin
 			LOAD_BYTE:
 				begin
 					buffer_addr <= block_counter;
-					state <= START_BYTE;
+					state <= FETCH_BYTE;
 				end
+
+      FETCH_BYTE:
+        // Wait one clock cycle for byte to fetch
+        begin
+          state <= START_BYTE;
+        end
 
 			START_BYTE:
 				begin
@@ -115,7 +124,7 @@ always_ff @(posedge clk or posedge reset) begin
 			BYTE_DONE:
 				begin
 					buffer_write_en <= 1'b0;
-					if (block_counter == (block_terminator - ADDR_BIT'(1))) // NOTE: This does work but is very hacky since 512 becomes 0 but that means 0 will transfer 512 
+					if (last_cycle) 
 						state <= TRANSFER_DONE;
 					else begin
 						block_counter <= block_counter + 1;

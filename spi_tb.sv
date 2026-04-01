@@ -38,8 +38,8 @@ logic        proc_read;                         /* Read data expected back     *
 logic [31:0] proc_data;                   /* Read data - display purposes only */
 
 assign sounder = port_out[7:6];
-assign port_in[1:0] = 2'b00;
-assign port_in[31:3] = 29'b0;
+assign port_in[0] = 1'b0;
+assign port_in[31:2] = 30'b0;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
 initial clk = 1'b1;                                   /* Setup a clock signal */
@@ -165,8 +165,8 @@ User_Peripheral  DUT (.clk            (clk),                  /* System clock */
 // port_out[0]=sclk, port_out[1]=MOSI, port_in[2]=MISO, port_out[3]=CS
 SPI_Slave_Dummy slave (
     .sclk(port_out[0]),
-    .mosi(port_out[1]),
-    .miso(port_in[2]),
+    .miso(port_in[1]),
+    .mosi(port_out[2]),
     .cs_n(port_out[3]) 
 );
 

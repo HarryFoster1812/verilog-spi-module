@@ -48,7 +48,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
     localparam ADDR_IRQ_ENABLE = 16'h01C;
 
     localparam BUFFER_START = 16'h200;
-		localparam BUFFER_BUS_SIZE = 12;
+		localparam BUFFER_BUS_SIZE = 10;
 
     wire is_ram_access = cs_i && (address_i[15:0] >= BUFFER_START);
     wire is_reg_access = cs_i && !is_ram_access;
@@ -113,41 +113,49 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
 
     // CPU Read Logic
     wire [31:0] ram_read_data; // From Buffer_RAM CPU port
+    logic [31:0] next_data_out;
+
+
+    always @(posedge clk) begin
+      if(reset)
+        data_out <= 32'h0;
+      else if (read_i)
+        data_out <= next_data_out;
+    end
 
     always @(*) begin
-        data_out = 32'h0000_0000;
+        next_data_out = 32'h0000_0000;
         if (is_ram_access && read_i) begin
-            data_out = ram_read_data;
+            next_data_out = ram_read_data;
         end 
         else if (is_reg_access && read_i) begin
             case (address_i[15:0])
-                ADDR_STATUS:     data_out = {24'b0, irq_status_flags, tc_error, tc_block_done, rx_valid_flag, tx_ready_flag, tc_busy};
-                ADDR_CONFIG:     data_out = reg_config;
-                ADDR_CS:         data_out = reg_cs;
-                ADDR_TXDATA:     data_out = {24'b0, tx_byte_reg};
-                ADDR_RXDATA:     data_out = {24'b0, tc_rx_byte};
-                ADDR_BLOCK_LEN:  data_out = reg_block_len;
-                ADDR_IRQ_ENABLE: data_out = reg_irq_enable;
-                default:         data_out = 32'h0000_0000;
+                ADDR_STATUS:     next_data_out = {24'b0, irq_status_flags, tc_error, tc_block_done, rx_valid_flag, tx_ready_flag, tc_busy};
+                ADDR_CONFIG:     next_data_out = reg_config;
+                ADDR_CS:         next_data_out = reg_cs;
+                ADDR_TXDATA:     next_data_out = {24'b0, tx_byte_reg};
+                ADDR_RXDATA:     next_data_out = {24'b0, tc_rx_byte};
+                ADDR_BLOCK_LEN:  next_data_out = reg_block_len;
+                ADDR_IRQ_ENABLE: next_data_out = reg_irq_enable;
+                default:         next_data_out = 32'h0000_0000;
             endcase
         end
     end
 
     // I/O Pin Mapping
-    // port_out[0]=sclk, port_out[1]=MOSI, port_in[2]=MISO, port_out[3]=CS
+    // port_out[0]=sclk, port_in[1]=MISO, port_out[2]=MOSI, port_out[3]=CS
     wire mosi_wire, sclk_wire, cs_wire, miso_wire;
     
     assign port_out[0] = sclk_wire;
-    assign port_out[1] = mosi_wire;
+    assign port_out[2] = mosi_wire;
     assign port_out[3] = cs_wire;
-    assign port_out[31:3] = 29'b0;
 
-		assign miso_wire = port_in[2];
+		assign miso_wire = port_in[1];
 
     // 0 = Output, 1 = Input. 
 		// MISO(0) is Input, 
 		// MOSI(0), SCLK(1), CS(2) are Outputs.
-    assign port_direction = 32'h0000_0004; // 0b0100
+    assign port_direction = 32'hFFFF_FFF2; // 0b0010
 
 		assign stall_o =    cs_i   && 1'b0;       /* Unlikely to want to change these */
 		assign abort_o = {3{cs_i}} && 3'h0;     /* Aborts done at 'MMU' level already */
@@ -167,7 +175,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
     wire       tc_buffer_we;
     wire [7:0] tc_buffer_rdata;
 
-    Buffer_RAM buffer_inst (
+    Buffer_RAM #(.ADDR_BIT(BUFFER_BUS_SIZE), .DEPTH(2**BUFFER_BUS_SIZE), .BUFFER_START_ADDR(BUFFER_START)) buffer_inst (
         .clk             (clk),
 				.reset(reset),
         
@@ -177,6 +185,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
         .cpu_write_en    (is_ram_access & write_i),
         .cpu_read_data   (ram_read_data),
         .cpu_read_mode   (size_i),
+        .cpu_read_en     (is_ram_access & read_i),
         
         // Transfer Controller Interface
         .tx_addr         (tc_buffer_addr),
@@ -191,7 +200,7 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
     wire       engine_byte_done;
     wire [7:0] engine_rx_byte;
 
-    Transfer_Controller tc_inst (
+    Transfer_Controller #(.ADDR_BIT(BUFFER_BUS_SIZE)) tc_inst (
         .clk             (clk),
         .reset           (reset),
         
