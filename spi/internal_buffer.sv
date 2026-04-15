@@ -50,6 +50,7 @@ module Buffer_RAM #(
     // Synchronous Logic
     always_ff @(posedge clk) begin
         if (reset) begin
+            cpu_read_data <= 32'h0;
             tx_read_data  <= 8'h0;
         end else begin
             // WRITE PORT 

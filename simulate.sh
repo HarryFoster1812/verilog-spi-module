@@ -11,6 +11,7 @@ vmap work work
 
 echo "Compiling..."
 vlog -sv \
+    drawing_engine.sv \
     spi/clock_divider.sv \
     spi/internal_buffer.sv \
     spi/interrupt_controller.sv \
