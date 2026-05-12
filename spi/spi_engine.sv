@@ -25,79 +25,64 @@ module SPI_Engine (
     logic [7:0] tx_shifter;  
     logic [7:0] rx_shifter;  
     logic       working;     
-    logic       pending;     // High when we are waiting for the next tick to start
     logic       sclk_reg;    
-    logic       tick;        
+    logic       half_cycle;  // Tracks which half of the SCLK period we are in
+    logic       tick;        // From Clock_Divider
 
     assign sclk = sclk_reg;
     assign rx_byte = rx_shifter;
     assign cs_out = cs;
     assign mosi = tx_shifter[7];
 
-    // Clock divider is now free-running (only reset by global reset)
+    // Instantiate your new Clock_Divider
     Clock_Divider clk_div_inst (
         .clk_in(clk),
-        .reset(reset), 
+        .reset(reset || !working), // Keep divider in reset when not working to sync phase
         .clk_divisor(clk_divider),
         .tick(tick)
     );
 
-logic [4:0] tick_count; // Counts 0 to 15 half-cycles
-
     always_ff @(posedge clk) begin
         if (reset) begin
             working    <= 1'b0;
-            pending    <= 1'b0;
+            bit_count  <= 4'd0;
             sclk_reg   <= cpol;
-            tick_count <= 5'd0;
+            half_cycle <= 1'b0;
             byte_done  <= 1'b0;
-        end else begin
-            byte_done <= 1'b0;
+            tx_shifter <= 8'h00;
+        end else if (start_byte && !working) begin
+            working    <= 1'b1;
+            tx_shifter <= tx_byte;
+            bit_count  <= 4'd0;
+            half_cycle <= 1'b0;
+            byte_done  <= 1'b0;
+            sclk_reg   <= cpol; 
+        end else if (working && tick) begin
+            // Toggle SCLK every tick
+            sclk_reg   <= !sclk_reg;
+            half_cycle <= !half_cycle;
 
-            if (start_byte && !working) begin
-                pending    <= 1'b1;
-                tx_shifter <= tx_byte;
-            end
-
-            // synchronize start with the next available tick
-            if (pending && tick) begin
-                pending    <= 1'b0;
-                working    <= 1'b1;
-                tick_count <= 5'd0;
-                
-                sclk_reg   <= !sclk_reg; // First Toggle
-
-                // IMMEDIATE SAMPLE for Mode 0
-                if (cpha == 1'b0) begin
-                    rx_shifter <= {rx_shifter[6:0], miso};
-                end
-                tick_count <= 5'd1; 
-            end
+            // SPI Logic: Sample vs Shift
+            // SPI standard: 
+            // CPHA=0: First edge is Sample, Second edge is Shift
+            // CPHA=1: First edge is Shift, Second edge is Sample
             
-            else if (working && tick) begin
-                sclk_reg <= !sclk_reg;
-                
-                // tick_count[0] == 0: Leading Edge (Bit 0, 2, 4, ect)
-                // tick_count[0] == 1: Trailing Edge (Bit 1, 3, 5, ect)
-                if (tick_count[0] == cpha) begin
-                    // SAMPLE PHASE
-                    rx_shifter <= {rx_shifter[6:0], miso};
-                end else begin
-                    // SHIFT PHASE
-                    if (tick_count < 15) begin
-                        tx_shifter <= {tx_shifter[6:0], 1'b0};
-                    end
-                end
-
-                // Increment and Exit
-                if (tick_count == 5'd15) begin
+            if (half_cycle == cpha) begin
+                // --- SAMPLE PHASE ---
+                rx_shifter <= {rx_shifter[6:0], miso};
+            end else begin
+                // --- SHIFT PHASE ---
+                if (bit_count == 4'd7) begin
                     working    <= 1'b0;
                     byte_done  <= 1'b1;
-                    sclk_reg   <= cpol; // Force return to idle
+                    sclk_reg   <= cpol; // Ensure we return to idle state
                 end else begin
-                    tick_count <= tick_count + 1'b1;
+                    tx_shifter <= {tx_shifter[6:0], 1'b0};
+                    bit_count  <= bit_count + 1'b1;
                 end
             end
+        end else begin
+            byte_done <= 1'b0; // Ensure pulse behavior
         end
     end
 

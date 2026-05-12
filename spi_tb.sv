@@ -5,13 +5,13 @@
 
 `define USER_IO_SPACE 16'h0002            /* 'Page' where this unit is mapped */
 
-`define RUN_TIME      100000000                  /* Number of cycles to simulate     */
+`define RUN_TIME      10000000                  /* Number of cycles to simulate     */
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
 module User_Testbench();
 
-localparam  CLOCK_PERIOD = 2;
+localparam  CLOCK_PERIOD = 25;
 
 logic        clk;                               /* System clock (40 MHz)       */
 logic        reset;                             /* System reset                */
@@ -72,113 +72,71 @@ assign proc_data = proc_read ? data_out : 32'hxxxx_xxxx;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 /*                     Processor stimulus (equivalent)                        */
 
-initial begin
-    // SETUP
-    reset_peripheral();
-    // Set Clock Div = 80 (approx 250kHz-400kHz for init)
-    peripheral_write_32bit(32'h0002_0008, 32'h5000); 
-    // Enable all Interrupts (Done, Error, etc.)
-    peripheral_write_32bit(32'h0002_001C, 32'h0000_000F); 
+initial
+begin
+reset_peripheral();
 
-    // SEND DUMMY CLOCKS (Power-on sequence)
-    // SD cards need 74+ clocks with CS High and MOSI High (0xFF)
-    // We will send 10 bytes of 0xFF via Block Mode to satisfy this.
-    $display("Sending dummy clocks");
-    for (int i = 0; i < 12; i += 4) begin
-        peripheral_write_32bit(32'h0002_0200 + i, 32'hFFFF_FFFF);
-    end
-    
-    peripheral_write_32bit(32'h0002_000C, 32'h0000_0001); // CS HIGH for dummy clocks
-    peripheral_write_32bit(32'h0002_0018, 32'd10);         // Block Len = 10 bytes
-    peripheral_write_32bit(32'h0002_0000, 32'h0000_0005); // Start Block Mode
-    
-    // Wait for block done
-    wait_for_interrupt();
-    $display("Dummy clocks sent");
-    peripheral_write_32bit(32'h0002_0004, 32'h0);         // Clear Flags
+// ram buffer test
+peripheral_write_32bit(32'h0002_0200, 32'hABCD_1234);  // write to ram Buffer
+peripheral_read_32bit (32'h0002_0200); // expected ABCD_1234
+peripheral_read_32bit (32'h0002_0204); // expected 0
+peripheral_write_32bit(32'h0002_02FF, 32'hFFFF_FFFF);  // write to ram Buffer (misaligned) expected buffer to align to address 0x2FC
+peripheral_read_32bit (32'h0002_02FC);
+peripheral_read_32bit (32'h0002_0300); // expected 0x0
 
-    // --- 3. SEND CMD0 (Go Idle State) ---
-    // Command: 0x40, Arg: 0x00000000, CRC: 0x95
-    $display("Sending CMD0");
-    peripheral_write_32bit(32'h0002_000C, 32'h0000_0000); // CS LOW (Start of Command)
-    
-    // Bytes: 40 00 00 00 00 95
-    send_manual_byte(8'h40);
-    send_manual_byte(8'h00);
-    send_manual_byte(8'h00);
-    send_manual_byte(8'h00);
-    send_manual_byte(8'h00);
-    send_manual_byte(8'h95);
+@ (posedge clk);                                        /* An idle moment ... */
 
-    // Poll for R1 Response (Looking for 0x01)
-    $display("Waiting for RES0");
-    poll_r1_response(); // Expected: 0x01
-    
-    peripheral_write_32bit(32'h0002_000C, 32'h0000_0001); // CS HIGH
-    send_manual_byte(8'hFF); // Extra 8 clocks for card to finish
+/* Test single transfer */
+peripheral_write_32bit(32'h0002_0008, 32'h0000_0200);  // write config status (clk div = 2)
+peripheral_write_32bit(32'h0002_001C, 32'h0000_000F);  // enable interrupts
+peripheral_write_32bit(32'h0002_0010, 32'd42);  // write tranfer data to be 42
+peripheral_write_32bit(32'h0002_000C, 32'd0);  // pull cs low
+peripheral_write_32bit(32'h0002_0000, 32'h0000_0001);  // start spi engine (single transfer mode)
+peripheral_read_32bit(32'h0002_0004); // read status register
 
-    // SEND CMD8 (Check Voltage)
-    // Command: 0x48, Arg: 0x000001AA, CRC: 0x87
-    peripheral_write_32bit(32'h0002_000C, 32'h0000_0000); // CS LOW
-    
-    send_manual_byte(8'h48);
-    send_manual_byte(8'h00);
-    send_manual_byte(8'h00);
-    send_manual_byte(8'h01);
-    send_manual_byte(8'hAA);
-    send_manual_byte(8'h87);
-
-    // Read R7 Response (R1 byte + 4 bytes of data)
-    poll_r1_response();     // R1
-    send_manual_byte(8'hFF); // R7 Byte 1
-    send_manual_byte(8'hFF); // R7 Byte 2
-    send_manual_byte(8'hFF); // R7 Byte 3
-    send_manual_byte(8'hFF); // R7 Byte 4
-    
-    peripheral_write_32bit(32'h0002_000C, 32'h0000_0001); // CS HIGH
-    send_manual_byte(8'hFF);
-
-    $display("SD Card Init Sequence (CMD0/CMD8) Complete.");
-end
-
-// Helper Tasks based on your Documentation
-
-task send_manual_byte(input [7:0] data);
-    peripheral_write_32bit(32'h0002_0010, {24'b0, data}); // TXDATA
-    peripheral_write_32bit(32'h0002_0000, 32'h0000_0001); // Start Manual
-    wait_for_interrupt();
-    peripheral_read_32bit(32'h0002_0014);                // Read RX (clears valid flag)
-    peripheral_write_32bit(32'h0002_0004, 32'h1);         // Clear Status/IRQ
-endtask
-
-task poll_r1_response();
-    reg [31:0] status;
-    reg [7:0] response;
-    response = 8'hFF;
-    while(response == 8'hFF) begin
-        peripheral_write_32bit(32'h0002_0010, 32'hFF);    // Dummy FF to clock response
-        peripheral_write_32bit(32'h0002_0000, 32'h0000_0001);
-        wait_for_interrupt();
-        peripheral_read_32bit(32'h0002_0014);            // Get result in simulator output
-        peripheral_write_32bit(32'h0002_0004, 32'h1); 
-        // Break if bit 7 is 0 (Valid R1 response)
-        #100; // Small delay for logic
-        response = 8'h01; // Force break for this example script logic
-    end
-endtask
-
-task wait_for_interrupt();
-    fork
+fork
         begin
             wait(irq != 4'b0000);
+            $display("%t [TB] Interrupt received.", $time);
         end
         begin
-            repeat (100000) @(posedge clk);
-            $display("TIMEOUT"); $finish;
+            repeat (1000) @(posedge clk);
+            $display("%t [TB] ERROR: Timeout waiting for interrupt!", $time);
+            $finish;
         end
     join_any
-    disable fork;
-endtask
+    disable fork; // Stop the "timer" if the interrupt won
+
+peripheral_read_32bit(32'h0002_0014); // read tx
+peripheral_write_32bit(32'h0002_0004, 32'h0); // write status to disable interrupt
+
+/* Test Block Mode */
+for (int i = 0; i < 512; i += 4) begin
+	peripheral_write_32bit(32'h0002_0200 + i, { 8'(i+3), 8'(i+2), 8'(i+1), 8'(i) });
+end
+peripheral_write_32bit(32'h0002_0008, 32'h0000_0200);  // write config status (clk div = 2)
+peripheral_write_32bit(32'h0002_0018, 32'h0000_0200);  // write block len = 512 bytes
+peripheral_write_32bit(32'h0002_000C, 32'd0);  // pull cs low
+peripheral_write_32bit(32'h0002_0000, 32'h0000_0005);  // start spi engine (block mode)
+
+fork
+        begin
+            wait(irq != 4'b0000);
+            $display("%t [TB] Interrupt received.", $time);
+        end
+        begin
+            repeat (10000000) @(posedge clk);
+            $display("%t [TB] ERROR: Timeout waiting for interrupt!", $time);
+            $finish;
+        end
+    join_any
+    disable fork; // Stop the "timer" if the interrupt won
+
+peripheral_write_32bit(32'h0002_0004, 32'h0); // write status to disable interrupt
+for (int i = 0; i < 512; i += 4) begin
+    peripheral_read_32bit(32'h0002_0200 + i); 
+end
+end
 
 assign cs = address[31:16] === `USER_IO_SPACE;     /* Decode peripheral space */
 
@@ -205,13 +163,12 @@ User_Peripheral  DUT (.clk            (clk),                  /* System clock */
 
 
 // port_out[0]=sclk, port_out[1]=MOSI, port_in[2]=MISO, port_out[3]=CS
-SPI_Slave_Dummy slave(
+SPI_Slave_Dummy slave (
     .sclk(port_out[0]),
     .miso(port_in[1]),
     .mosi(port_out[2]),
     .cs_n(port_out[3]) 
 );
-
 
 /*----------------------------------------------------------------------------*/
 
