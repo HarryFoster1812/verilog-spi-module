@@ -1,6 +1,6 @@
 module Buffer_RAM #(
-    parameter ADDR_BIT = 12,
-    parameter DEPTH    = 4096,
+    parameter ADDR_BIT = 10,
+    parameter DEPTH    = 1024,
     parameter BUFFER_START_ADDR = 'h200
 )(
     input  logic        clk,
@@ -31,26 +31,16 @@ module Buffer_RAM #(
     // CPU Expects zero cycle read
     always_comb begin
       if (cpu_read_en) begin
-          case (cpu_read_mode)
-              2'b00: cpu_read_data = {24'h0, buffer[ram_index]};
-              
-              2'b01: cpu_read_data = {16'h0, 
-                                      buffer[{ram_index[ADDR_BIT-1:1], 1'b1}], 
-                                      buffer[{ram_index[ADDR_BIT-1:1], 1'b0}]};
-              
-              2'b10: cpu_read_data = {buffer[{ram_index[ADDR_BIT-1:2], 2'b11}], 
-                                      buffer[{ram_index[ADDR_BIT-1:2], 2'b10}], 
-                                      buffer[{ram_index[ADDR_BIT-1:2], 2'b01}], 
-                                      buffer[{ram_index[ADDR_BIT-1:2], 2'b00}]};
-              default: cpu_read_data = 32'h0;
-          endcase
+        cpu_read_data = {buffer[{ram_index[ADDR_BIT-1:2], 2'b11}], 
+                                buffer[{ram_index[ADDR_BIT-1:2], 2'b10}], 
+                                buffer[{ram_index[ADDR_BIT-1:2], 2'b01}], 
+                                buffer[{ram_index[ADDR_BIT-1:2], 2'b00}]};
         end else begin cpu_read_data = 32'h0; end
     end
 
     // Synchronous Logic
     always_ff @(posedge clk) begin
         if (reset) begin
-            cpu_read_data <= 32'h0;
             tx_read_data  <= 8'h0;
         end else begin
             // WRITE PORT 

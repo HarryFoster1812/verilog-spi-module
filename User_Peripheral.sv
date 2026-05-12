@@ -33,8 +33,9 @@ output wire  [3:0] irq_o);        /*Interrupt requests*/
 
     // Address Decoding
     // address_i[9:0]
-    // 0x000 - 0x1FF: Memory Mapped Registers (address_i[9] == 0)
-    // 0x200 - 0x3FF: 512-Byte Buffer RAM     (address_i[9] == 1)
+    // 0x000 - 0x1FF: Memory Mapped Registers
+    // 0x200 - 0x3FF: 512-Byte Buffer RAM (TX) 
+    // 0x400 - 0x7FF: 512-Byte Buffer RAM (RX)  
     
     
     // Register Address Offsets
